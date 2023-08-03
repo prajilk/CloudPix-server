@@ -18,7 +18,7 @@ const getUserDetails = require("./auth/getUserDetails");
 require("./db/dbConnection")();
 
 // Manage user collection in db
-const userHelper = require("./helper/UserHelper");
+const userHelper = require("./helper/usersHelper");
 // Manage uploads collection in db
 const uploadsHelper = require("./helper/uploadsHelper");
 

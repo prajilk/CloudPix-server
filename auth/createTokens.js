@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-const userHelper = require('../helper/UserHelper');
+const userHelper = require('../helper/usersHelper');
 
 const createTokens = (req, res) => {
 
