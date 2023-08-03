@@ -20,16 +20,12 @@ module.exports = {
         const uploadsSchema = Schema({
             user: mongoose.Schema.Types.ObjectId,
             images: [{
+                _id: mongoose.Schema.Types.ObjectId,
                 filename: String,
                 url: String,
                 size: Number,
-                date: Date,
-                collectionName: {
-                    type: String,
-                    default: null
-                }
-            }],
-            collections: String
+                date: Date
+            }]
         }, { collection: 'uploads', versionKey: false })
         if (!mongoose.models.Uploads) {
             Uploads = mongoose.model('Uploads', uploadsSchema);

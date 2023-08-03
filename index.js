@@ -3,6 +3,7 @@ const cors = require("cors")
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
+const { default: mongoose } = require("mongoose");
 
 // Configure multer and cloudinary for handling file uploads
 const { upload } = require("./config/cloudinary.config");
@@ -22,8 +23,6 @@ const userHelper = require("./helper/usersHelper");
 // Manage uploads collection in db
 const uploadsHelper = require("./helper/uploadsHelper");
 
-// const app = express();
-
 app.use(cookieParser());
 // Middleware for parsing request bodies (POST requests) as JSON objects
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -37,11 +36,13 @@ app.use(cors({
 
 // Route for Registration
 app.post("/register", (req, res) => {
-    const userData = req.body;
+    const userData = req.body; // Get user data from request
+
+    // Register a new user
     userHelper.register(userData).then(() => {
-        res.status(200).json({ status: 'Success', error: false })
+        res.status(200).json({ status: 'Success', error: false }) // Return success
     }).catch(errMessage => {
-        res.status(409).json({ status: 'Failed', message: errMessage, error: true })
+        res.status(409).json({ status: 'Failed', message: errMessage, error: true }) // Return Failed with Error Message
     })
 });
 
@@ -68,6 +69,7 @@ app.get('/logout', (req, res) => {
     res.status(200).json({ data: 'Logout out successfully' });
 });
 
+// Create new collection (Not used yet)
 app.post("/create-collection", getUserDetails, (req, res) => {
     const collection = req.body.collectionName;
     res.send(collection)
@@ -77,20 +79,28 @@ app.post("/create-collection", getUserDetails, (req, res) => {
 app.post('/upload', getUserDetails, upload.array('file'), async (req, res) => {
 
     const uploads = [];
-    const files = req.files;
+    const files = req.files; // Get all files from request
+
+    // Loop through each files in the request
     for (const file of files) {
-        const { path, size, originalname, filename } = file;
-        const newPath = {
+        const { path, size, originalname, filename } = file; // Separate image details from file
+
+        // Create a new Image Object for each image
+        const newImageObj = {
+            _id: new mongoose.Types.ObjectId(),
             filename: originalname,
             url: path,
             size: size,
             date: filename.slice(-10)
         }
-        uploads.push(newPath);
+        uploads.push(newImageObj); // Push it to the uploads array
     }
+
+    // Send the uploads array to the uploadsHelper to save in mongoDB
     await uploadsHelper.uploadImage(req.user._id, uploads);
 
-    res.status(200).json({ message: "Upload successfully", urls: uploads });
+    // Return success after insertion
+    res.status(200).json({ message: "Upload successfully", uploads: uploads });
 
 });
 
