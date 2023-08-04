@@ -110,6 +110,37 @@ app.get("/get-images", getUserDetails, (req, res) => {
     }).catch((err) => {
         res.status(500).json({ images: [], error: err })
     })
+});
+
+app.post("/change-filename", getUserDetails, (req, res) => {
+    const newFilename = req.body.filename;
+    const imageId = req.body.imageId;
+    try {
+        if (newFilename && imageId) {
+            uploadsHelper.updateFileName(req.user._id, imageId, newFilename)
+                .then(() => res.status(200).json({ message: "Name changed successfully", _id: imageId, updatedName: newFilename }))
+                .catch((error) => res.status(500).json({ message: error }))
+        } else {
+            res.status(400).json({ message: "Invalid imageId or filename" })
+        }
+    } catch (error) {
+        res.status(500).json({ message: "Internal server error", error });
+    }
+});
+
+app.post('/delete-image', getUserDetails, (req, res) => {
+    const ImageIdToDelete = req.body.imageId;
+    try {
+        if (ImageIdToDelete) {
+            uploadsHelper.deleteImage(req.user._id, ImageIdToDelete)
+                .then(() => res.status(200).json({ message: "Image deleted successfully", _id: ImageIdToDelete }))
+                .catch((error) => res.status(500).json({ message: error }))
+        } else {
+            res.status(400).json({ message: "Invalid imageId" })
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message, error })
+    }
 })
 
 app.listen(5000, () => {
