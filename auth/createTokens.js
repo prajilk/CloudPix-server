@@ -8,7 +8,6 @@ const createTokens = (req, res) => {
         // Remove the password from the validUser
         const user = Object.assign({}, validUser);
         delete user._doc.password;
-        delete user._doc.email;
 
         // Generate access token (expires in 10 minutes)
         const accessToken = jwt.sign(user._doc, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });

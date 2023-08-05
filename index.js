@@ -22,6 +22,7 @@ require("./db/dbConnection")();
 const userHelper = require("./helper/usersHelper");
 // Manage uploads collection in db
 const uploadsHelper = require("./helper/uploadsHelper");
+const updateToken = require("./auth/updateToken");
 
 app.use(cookieParser());
 // Middleware for parsing request bodies (POST requests) as JSON objects
@@ -117,8 +118,8 @@ app.post("/change-filename", getUserDetails, (req, res) => {
     const imageId = req.body.imageId;
     try {
         if (newFilename && imageId) {
-            uploadsHelper.updateFileName(req.user._id, imageId, newFilename)
-                .then(() => res.status(200).json({ message: "Name changed successfully", _id: imageId, updatedName: newFilename }))
+            uploadsHelper.updateFileName(req.user._id, imageId, req.user.fullName, newFilename)
+                .then((response) => res.status(200).json({ message: response.message, _id: imageId, updatedName: newFilename, updatedUrl: response.updatedUrl }))
                 .catch((error) => res.status(500).json({ message: error }))
         } else {
             res.status(400).json({ message: "Invalid imageId or filename" })
@@ -132,7 +133,7 @@ app.post('/delete-image', getUserDetails, (req, res) => {
     const ImageIdToDelete = req.body.imageId;
     try {
         if (ImageIdToDelete) {
-            uploadsHelper.deleteImage(req.user._id, ImageIdToDelete)
+            uploadsHelper.deleteImage(req.user._id, req.user.fullName, ImageIdToDelete)
                 .then(() => res.status(200).json({ message: "Image deleted successfully", _id: ImageIdToDelete }))
                 .catch((error) => res.status(500).json({ message: error }))
         } else {
@@ -142,6 +143,25 @@ app.post('/delete-image', getUserDetails, (req, res) => {
         res.status(500).json({ message: error.message, error })
     }
 })
+
+app.post('/update-profile', (req, res) => {
+    userHelper.updateProfile(req.body._id, req.body.value, req.body.type).then(() => {
+        updateToken(req, res, req.body.type, req.body.value);
+    }).catch((err) => {
+        if (err.status_code === 404) res.status(404).json(err)
+        else res.status(500).json(err)
+    })
+})
+
+app.post('/change-password', getUserDetails, (req, res) => {
+
+    userHelper.changePassword(req.body, req.user._id).then((data) => {
+        res.status(data.status_code).json(data)
+    }).catch((err) => {
+        res.status(err.status_code).json(err)
+    })
+})
+
 
 app.listen(5000, () => {
     console.log("Server listening on port 5000");

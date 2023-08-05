@@ -34,21 +34,41 @@ module.exports = {
             }
         })
     },
-    getUser: (id) => {
+    updateProfile: (id, value, type) => {
         return new Promise(async (resolve, reject) => {
             try {
-                const validUser = await userModel.findOne({ _id: id })
-                // Remove the password & api_key from the validUser
-                if (validUser) {
-                    const user = Object.assign({}, validUser);
-                    delete user._doc.password;
-                    resolve(user._doc)
-                } else {
+                const result = await userModel.updateOne({ _id: id }, { [type]: value })
+                if (result.matchedCount === 0)
                     reject({ message: 'User not found', status_code: 404 })
-                }
+                else
+                    resolve()
             } catch (error) {
                 reject(error)
             }
         })
     },
+    changePassword: (passwords, userId) => {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const user = await userModel.findById(userId);
+                if (!user) {
+                    return reject({ message: 'User not found', status_code: 404 })
+                }
+
+                const passwordMatch = await bcrypt.compare(passwords.oldPassword, user.password)
+                if (!passwordMatch) {
+                    return reject({ message: 'Incorrect password', status_code: 401 })
+                }
+                if (passwords.oldPassword === passwords.newPassword) {
+                    return reject({ message: 'New password should be different from old password', status_code: 400 })
+                }
+
+                user.password = await bcrypt.hash(passwords.newPassword, 10);
+                await user.save();
+                resolve({ message: 'Password changed successfully', status_code: 200 })
+            } catch (error) {
+                reject({ message: error, status_code: 500 })
+            }
+        })
+    }
 }
