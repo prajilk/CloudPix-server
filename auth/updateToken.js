@@ -2,10 +2,11 @@ const jwt = require('jsonwebtoken');
 
 const updateToken = (req, res, type, value) => {
 
-    if (req.cookies?.accessToken) {
+    if (req.cookies?.accessToken && req.cookies?.refreshToken) {
 
         // Check if access token is present in header or cookies
         const accessToken = req.cookies.accessToken;
+        const refreshToken = req.cookies.refreshToken
         if (!accessToken) {
             return res.status(401).send({ data: 'Access token is missing', error: true });
         }
@@ -28,12 +29,12 @@ const updateToken = (req, res, type, value) => {
             const originalExpTimeRef = decodedRefPayload.exp;
 
             // Create a new JWT with the updated payload and original expiration time
-            const updatedToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: originalExpTimeAcc - Math.floor(Date.now() / 1000) });
+            const updatedAccToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: originalExpTimeAcc - Math.floor(Date.now() / 1000) });
 
-            const refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET, { expiresIn: originalExpTimeRef - Math.floor(Date.now() / 1000) });
+            const updatedRefToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET, { expiresIn: originalExpTimeRef - Math.floor(Date.now() / 1000) });
 
             // Update the cookie with the new Data
-            res.cookie('accessToken', updatedToken, {
+            res.cookie('accessToken', updatedAccToken, {
                 httpOnly: true,
                 sameSite: 'none',
                 secure: true,
@@ -41,7 +42,7 @@ const updateToken = (req, res, type, value) => {
             });
 
             // Update the cookie with the new Data
-            res.cookie('refreshToken', refreshToken, {
+            res.cookie('refreshToken', updatedRefToken, {
                 httpOnly: true,
                 sameSite: 'none',
                 secure: true,
@@ -50,12 +51,11 @@ const updateToken = (req, res, type, value) => {
 
             return res.status(200).json({ message: 'Token updated successfully.', user: user });
         } catch (error) {
-            console.log(error);
             return res.status(403).json({ message: 'Token validation failed.' });
         }
 
     } else {
-        return res.status(401).json({ data: "Cookie doesn't have REFRESH Token", error: true });
+        return res.status(401).json({ data: "Cookie doesn't have Tokens", error: true });
     }
 }
 
