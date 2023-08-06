@@ -118,7 +118,7 @@ app.post("/change-filename", getUserDetails, (req, res) => {
     const imageId = req.body.imageId;
     try {
         if (newFilename && imageId) {
-            uploadsHelper.updateFileName(req.user._id, imageId, req.user.fullName, newFilename)
+            uploadsHelper.updateFileName(req.user._id, imageId, newFilename)
                 .then((response) => res.status(200).json({ message: response.message, _id: imageId, updatedName: newFilename, updatedUrl: response.updatedUrl }))
                 .catch((error) => res.status(500).json({ message: error }))
         } else {
@@ -133,7 +133,7 @@ app.post('/delete-image', getUserDetails, (req, res) => {
     const ImageIdToDelete = req.body.imageId;
     try {
         if (ImageIdToDelete) {
-            uploadsHelper.deleteImage(req.user._id, req.user.fullName, ImageIdToDelete)
+            uploadsHelper.deleteImage(req.user._id, ImageIdToDelete)
                 .then(() => res.status(200).json({ message: "Image deleted successfully", _id: ImageIdToDelete }))
                 .catch((error) => res.status(500).json({ message: error }))
         } else {

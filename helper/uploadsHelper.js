@@ -37,7 +37,7 @@ module.exports = {
             }
         })
     },
-    updateFileName: (userId, imageId, userName, filename) => {
+    updateFileName: (userId, imageId, filename) => {
         return new Promise(async (resolve, reject) => {
             try {
 
@@ -45,7 +45,7 @@ module.exports = {
                 const imgObjToRename = await uploadsModel.aggregate(getImageObjectQuery(userId, imageId));
 
                 // Rename image from Cloudinary storage
-                const renameResponse = await renameImageFromCloud(imgObjToRename[0].image, filename, userId, userName);
+                const renameResponse = await renameImageFromCloud(imgObjToRename[0].image, filename, userId);
 
                 // Rename image and update url from MongoDB
                 const result = await uploadsModel.updateOne(
@@ -62,7 +62,7 @@ module.exports = {
             }
         })
     },
-    deleteImage: (userId, userName, imageId) => {
+    deleteImage: (userId, imageId) => {
         return new Promise(async (resolve, reject) => {
 
             try {
@@ -71,7 +71,7 @@ module.exports = {
                 const imgObjToDelete = await uploadsModel.aggregate(getImageObjectQuery(userId, imageId));
 
                 // Delete image from Cloudinary storage
-                const response = await deleteImageFromCloud(imgObjToDelete[0].image, userId, userName);
+                const response = await deleteImageFromCloud(imgObjToDelete[0].image, userId);
 
                 if (response.result === 'ok') {
                     // Delete image from MongoDB

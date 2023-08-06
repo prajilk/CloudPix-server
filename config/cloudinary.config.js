@@ -17,8 +17,7 @@ const storage = new CloudinaryStorage({
         const public_id = `${originalFileName}-${date}`;
 
         return {
-            folder: `Images/${req.user._id}-${req.user.fullName}`,
-            // folder: 'Images',
+            folder: `Images/${req.user._id}`,
             public_id: public_id,
         };
     },
@@ -32,7 +31,7 @@ function getExactName(filename) {
 }
 
 // Delete image from cloudinary storage
-const deleteImageFromCloud = (imageObj, userId, userName) => {
+const deleteImageFromCloud = (imageObj, userId) => {
 
     const exactFilename = getExactName(imageObj.filename); // Get only filename without extension
     const date = new Date(imageObj.date).toISOString().slice(0, 10); // Formate date to ex: 2023-02-05
@@ -46,7 +45,7 @@ const deleteImageFromCloud = (imageObj, userId, userName) => {
 
     // Checking if the image is stored inside user specific folder or not
     if (deleteResponse.result !== 'ok') {
-        return deleteImg(`Images/${userId}-${userName}/${exactFilename}-${date}`) // Delete if image is inside user specific folder
+        return deleteImg(`Images/${userId}/${exactFilename}-${date}`) // Delete if image is inside user specific folder
     } else {
         return deleteResponse;
     }
@@ -54,7 +53,7 @@ const deleteImageFromCloud = (imageObj, userId, userName) => {
 }
 
 // Rename image from cloudinary storage
-const renameImageFromCloud = async (imageObj, filename, userId, userName) => {
+const renameImageFromCloud = async (imageObj, filename, userId) => {
 
     const exactFilename = getExactName(imageObj.filename); // Get only filename without extension
     const newExactFilename = getExactName(filename);
@@ -74,7 +73,7 @@ const renameImageFromCloud = async (imageObj, filename, userId, userName) => {
     const renameResponse = await renameImg(`Images/${exactFilename}-${date}`, `Images/${newExactFilename}-${date}`);
     if (renameResponse === null) {
         // Rename if image is inside user specific folder
-        return await renameImg(`Images/${userId}-${userName}/${exactFilename}-${date}`, `Images/${userId}-${userName}/${newExactFilename}-${date}`)
+        return await renameImg(`Images/${userId}/${exactFilename}-${date}`, `Images/${userId}/${newExactFilename}-${date}`)
     } else {
         return renameResponse;
     }
