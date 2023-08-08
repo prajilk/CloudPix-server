@@ -4,9 +4,18 @@ const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const { default: mongoose } = require("mongoose");
+const { Server } = require('@tus/server');
+const { FileStore } = require('@tus/file-store')
 
-// Configure multer and cloudinary for handling file uploads
-const { upload } = require("./config/cloudinary.config");
+
+const uploadApp = express();
+const server = new Server({
+    path: '/files',
+    datastore: new FileStore({ directory: "./files" })
+});
+
+const { assembleChunks } = require('./files/manageChunks');
+const { firebaseUpload } = require('./manage-files/firebase');
 
 const app = express();
 
@@ -24,6 +33,7 @@ const userHelper = require("./helper/usersHelper");
 const uploadsHelper = require("./helper/uploadsHelper");
 const updateToken = require("./auth/updateToken");
 
+// Middleware for parsing cookie
 app.use(cookieParser());
 // Middleware for parsing request bodies (POST requests) as JSON objects
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -34,6 +44,14 @@ app.use(cors({
     origin: ['http://localhost:5173', 'https://cloudpix.vercel.app'],
     credentials: true
 }))
+
+// Middleware to get user details for authentication
+uploadApp.use(getUserDetails);
+
+// Route to manage file upload
+uploadApp.all("*", server.handle.bind(server));
+app.use("/upload", uploadApp);
+
 
 // Route for Registration
 app.post("/register", (req, res) => {
@@ -76,34 +94,44 @@ app.post("/create-collection", getUserDetails, (req, res) => {
     res.send(collection)
 })
 
-// Route to handle file uploads
-app.post('/upload', getUserDetails, upload.array('file'), async (req, res) => {
+// Update mongodb database with new uploads
+app.post('/update-database', getUserDetails, (req, res) => {
+    let tempArray = []; // initialize empty temp array for storing all new uploads
+    const imageDetailsArray = req.body.data; // Get all new Uploads details
 
-    const uploads = [];
-    const files = req.files; // Get all files from request
-
-    // Loop through each files in the request
-    for (const file of files) {
-        const { path, size, originalname, filename } = file; // Separate image details from file
-
-        // Create a new Image Object for each image
-        const newImageObj = {
-            _id: new mongoose.Types.ObjectId(),
-            filename: originalname,
-            url: path,
-            size: size,
-            date: filename.slice(-10)
-        }
-        uploads.push(newImageObj); // Push it to the uploads array
+    if (imageDetailsArray) {
+        // Map through imageDetailsArray containing objects of new uploads details
+        imageDetailsArray.map(async (imageObj) => {
+            await assembleChunks(imageObj); // Assemble chunks of uploaded file
+            // Upload assembled image to firebase storage and delete image, chunk and metadata after upload and return firebase downloadable url
+            const result = await firebaseUpload(imageObj.filename, req.user._id, imageObj.file_id);
+            // create a new Object with mongoose id and firebase url
+            const newImageObj = {
+                _id: new mongoose.Types.ObjectId(),
+                file_id: imageObj.file_id,
+                filename: imageObj.filename,
+                url: result?.url,
+                size: imageObj.size,
+                date: imageObj.date
+            }
+            // Insert created individual object into mongodb
+            uploadsHelper.uploadImage(req.user._id, newImageObj)
+                .then((response) => {
+                    // After saving file store it to tempArray
+                    tempArray.push(newImageObj);
+                    if (tempArray.length === imageDetailsArray.length) {
+                        // When the last object is saved in mongodb return tempArray containing all new uploads with url to client
+                        res.status(200).json({ message: response.message, uploads: tempArray })
+                    }
+                })
+                .catch((err) => {
+                    res.status(500).json({ message: err.message, error: err })
+                })
+        })
+    } else {
+        res.status(401).json({ message: "Image details array not received", error: true })
     }
-
-    // Send the uploads array to the uploadsHelper to save in mongoDB
-    await uploadsHelper.uploadImage(req.user._id, uploads);
-
-    // Return success after insertion
-    res.status(200).json({ message: "Upload successfully", uploads: uploads });
-
-});
+})
 
 app.get("/get-images", getUserDetails, (req, res) => {
     uploadsHelper.getUploads(req.user._id).then((images) => {

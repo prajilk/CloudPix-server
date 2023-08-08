@@ -1,16 +1,15 @@
-const { default: mongoose } = require("mongoose");
 const model = require("../db/dbModel");
-const { deleteImageFromCloud, renameImageFromCloud } = require("../config/cloudinary.config");
+const { deleteImageFromFBStorage, renameImageInFBStorage } = require('../manage-files/firebase')
 const { getImageObjectQuery } = require("../db/dbQueries");
 
 const uploadsModel = model.Uploads()
 
 module.exports = {
-    uploadImage: (userId, uploads) => {
+    uploadImage: (userId, imageObj) => {
         return new Promise(async (resolve, reject) => {
             try {
                 const filter = { user: userId };
-                const update = { $addToSet: { images: { $each: uploads } } };
+                const update = { $addToSet: { images: imageObj } };
                 const options = { upsert: true };
 
                 const result = await uploadsModel.updateOne(filter, update, options);
@@ -37,26 +36,31 @@ module.exports = {
             }
         })
     },
-    updateFileName: (userId, imageId, filename) => {
+    updateFileName: (userId, imageId, newFilename) => {
         return new Promise(async (resolve, reject) => {
             try {
 
                 // Get Image object from db
                 const imgObjToRename = await uploadsModel.aggregate(getImageObjectQuery(userId, imageId));
 
-                // Rename image from Cloudinary storage
-                const renameResponse = await renameImageFromCloud(imgObjToRename[0].image, filename, userId);
+                // Rename image from firebase storage
+                const renameResponse = await renameImageInFBStorage(userId, imgObjToRename[0].image.filename, newFilename)
 
-                // Rename image and update url from MongoDB
-                const result = await uploadsModel.updateOne(
-                    { user: userId, 'images._id': imageId }, // Find the document with the given user and image _id
-                    { $set: { 'images.$.filename': filename, 'images.$.url': renameResponse.url } } // Update the filename of the matching image
-                )
-                if (result.modifiedCount > 0) {
-                    resolve({ message: 'Image name updated successfully.', updatedUrl: renameResponse.url });
+                if (renameResponse.result === 'ok') {
+                    // Rename image and update url from MongoDB
+                    const result = await uploadsModel.updateOne(
+                        { user: userId, 'images._id': imageId }, // Find the document with the given user and image _id
+                        { $set: { 'images.$.filename': newFilename, 'images.$.url': renameResponse.url } } // Update the filename of the matching image
+                    )
+                    if (result.modifiedCount > 0) {
+                        resolve({ message: 'Image name updated successfully.', updatedUrl: renameResponse.url });
+                    } else {
+                        reject({ message: 'Image not found or not updated.' })
+                    }
                 } else {
-                    reject({ message: 'Image not found or not updated.' })
+                    reject({ message: "Filed to delete image!" });
                 }
+
             } catch (error) {
                 reject({ message: error.message, error })
             }
@@ -70,8 +74,11 @@ module.exports = {
                 // Get Image object from db
                 const imgObjToDelete = await uploadsModel.aggregate(getImageObjectQuery(userId, imageId));
 
+                // Delete image from firebase storage
+                const response = await deleteImageFromFBStorage(userId, imgObjToDelete[0].image.filename)
+
                 // Delete image from Cloudinary storage
-                const response = await deleteImageFromCloud(imgObjToDelete[0].image, userId);
+                // const response = await deleteImageFromCloud(imgObjToDelete[0].image, userId);
 
                 if (response.result === 'ok') {
                     // Delete image from MongoDB
