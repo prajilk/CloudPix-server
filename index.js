@@ -89,11 +89,7 @@ app.get('/logout', (req, res) => {
     res.status(200).json({ data: 'Logout out successfully' });
 });
 
-// Create new collection (Not used yet)
-app.post("/create-collection", getUserDetails, (req, res) => {
-    const collection = req.body.collectionName;
-    res.send(collection)
-})
+// Create new collection (Not created yet)
 
 // Update mongodb database with new uploads
 app.post('/update-database', getUserDetails, (req, res) => {
