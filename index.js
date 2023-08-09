@@ -11,7 +11,8 @@ const { FileStore } = require('@tus/file-store')
 const uploadApp = express();
 const server = new Server({
     path: '/files',
-    datastore: new FileStore({ directory: "./files" })
+    datastore: new FileStore({ directory: "./files" }),
+    respectForwardedHeaders: true
 });
 
 const { assembleChunks } = require('./files/manageChunks');
